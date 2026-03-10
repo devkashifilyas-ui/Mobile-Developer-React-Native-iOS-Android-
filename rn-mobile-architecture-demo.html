@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>React Native · Mobile Architecture Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #060a0f;
+  --bg2: #090e15;
+  --surface: #0d1520;
+  --card: #101822;
+  --card2: #141f2d;
+  --border: rgba(255,255,255,0.06);
+  --border-blue: rgba(56,189,248,0.18);
+  --border-green: rgba(52,211,153,0.15);
+  --border-amber: rgba(251,191,36,0.15);
+  --white: #e2edf8;
+  --muted: #64748b;
+  --muted2: #334155;
+  --blue: #38bdf8;
+  --blue2: #7dd3fc;
+  --blue-dim: rgba(56,189,248,0.08);
+  --blue-faint: rgba(56,189,248,0.04);
+  --green: #34d399;
+  --green-dim: rgba(52,211,153,0.08);
+  --amber: #fbbf24;
+  --amber-dim: rgba(251,191,36,0.08);
+  --purple: #a78bfa;
+  --red: #f87171;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Manrope', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: var(--sans);
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 70% 10%, rgba(56,189,248,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 10% 80%, rgba(52,211,153,0.03) 0%, transparent 50%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  position:sticky; top:0; z-index:100;
+  background: rgba(6,10,15,0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  height: 54px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 0 24px;
+}
+.tb-logo {
+  font-family: var(--mono);
+  font-size: 13px; font-weight:700;
+  color: var(--blue);
+  display:flex; align-items:center; gap:10px;
+}
+.tb-dot { width:8px;height:8px;background:var(--blue);border-radius:50%;box-shadow:0 0 10px var(--blue);animation:pulse2 2s ease infinite; }
+@keyframes pulse2{0%,100%{opacity:1;box-shadow:0 0 10px var(--blue);}50%{opacity:.5;box-shadow:0 0 4px var(--blue);}}
+.tb-badge { font-size:9px;background:var(--blue-dim);border:1px solid var(--border-blue);color:var(--blue2);padding:2px 8px;border-radius:3px;letter-spacing:.5px; }
+.tb-pills { display:flex;gap:10px; }
+.tb-pill { font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid; }
+.tp-blue{color:var(--blue);border-color:rgba(56,189,248,.2);background:var(--blue-faint);}
+.tp-green{color:var(--green);border-color:rgba(52,211,153,.2);background:var(--green-dim);}
+.tp-amber{color:var(--amber);border-color:rgba(251,191,36,.2);background:var(--amber-dim);}
+
+/* ── LAYOUT ── */
+.layout { display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 54px); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  border-right:1px solid var(--border);
+  background:var(--bg2);
+  padding:18px 0;
+  position:sticky;top:54px;
+  height:calc(100vh - 54px);
+  overflow-y:auto;
+}
+.sb-group { font-family:var(--mono);font-size:9px;color:var(--muted2);letter-spacing:2px;text-transform:uppercase;padding:0 16px;margin-bottom:6px;margin-top:14px; }
+.sb-group:first-child{margin-top:0;}
+.sb-item {
+  display:flex;align-items:center;gap:9px;
+  padding:8px 16px;
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+  cursor:pointer;transition:all .15s;
+  border-left:2px solid transparent;
+}
+.sb-item:hover{color:var(--white);background:rgba(255,255,255,.02);}
+.sb-item.active{color:var(--blue);border-left-color:var(--blue);background:var(--blue-faint);}
+.sb-icon{font-size:12px;}
+.sb-div{height:1px;background:var(--border);margin:8px 16px;}
+
+/* ── MAIN ── */
+.main{padding:28px 36px;overflow-y:auto;position:relative;z-index:1;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* PANEL HEADER */
+.ph{margin-bottom:24px;}
+.ph-crumb{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:8px;}
+.ph-crumb span{color:var(--blue);}
+.ph-title{font-size:24px;font-weight:800;color:var(--white);letter-spacing:-.4px;margin-bottom:5px;}
+.ph-sub{font-size:13px;color:var(--muted);line-height:1.7;max-width:580px;}
+
+/* GRIDS */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:18px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:9px;padding:18px;transition:border-color .2s;}
+.card:hover{border-color:rgba(56,189,248,.15);}
+.c-icon{font-size:18px;margin-bottom:9px;}
+.c-title{font-weight:700;font-size:13px;color:var(--white);margin-bottom:4px;}
+.c-body{font-size:12px;color:var(--muted);line-height:1.65;}
+
+/* CODE */
+.code{background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;}
+.code-bar{display:flex;align-items:center;gap:5px;padding:8px 13px;background:var(--surface);border-bottom:1px solid var(--border);}
+.cd{width:8px;height:8px;border-radius:50%;}
+.cr{background:#ef4444;}.cy{background:#f59e0b;}.cg{background:#22c55e;}
+.cf{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:5px;}
+.code-body{padding:13px 16px;font-family:var(--mono);font-size:11px;line-height:2;overflow-x:auto;}
+.kw{color:#a78bfa;}.fn{color:#34d399;}.str{color:#fbbf24;}.cm{color:var(--muted2);}.ty{color:var(--blue2);}.op{color:#f87171;}
+
+/* FLOW DIAGRAM */
+.flow{display:flex;flex-direction:column;align-items:center;gap:0;margin-bottom:18px;}
+.fn-node{
+  background:var(--card2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 20px;text-align:center;width:220px;
+  font-family:var(--mono);font-size:11px;transition:all .2s;cursor:default;
+}
+.fn-node:hover{border-color:var(--border-blue);background:var(--blue-faint);}
+.fn-node.hl{border-color:var(--border-blue);background:var(--blue-dim);}
+.fn-node.gl{border-color:var(--border-green);background:var(--green-dim);}
+.fn-node.al{border-color:var(--border-amber);background:var(--amber-dim);}
+.fn-name{font-weight:600;color:var(--white);margin-bottom:2px;}
+.fn-sub{font-size:9px;color:var(--muted);}
+.fn-arrow{color:var(--muted2);padding:4px 0;font-size:13px;}
+
+/* FOLDER TREE */
+.tree{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:16px 18px;font-family:var(--mono);font-size:11px;line-height:2.1;margin-bottom:14px;}
+.tr{color:var(--blue);font-weight:600;}
+.tf{color:var(--green);padding-left:16px;}
+.tfi{color:var(--muted);padding-left:32px;}
+.tfi::before{content:'— ';color:var(--muted2);}
+
+/* PIPELINE */
+.pipeline{display:flex;align-items:stretch;gap:0;overflow-x:auto;margin-bottom:18px;}
+.pp{
+  background:var(--card);border:1px solid var(--border);
+  padding:14px 13px;min-width:120px;flex-shrink:0;
+  cursor:pointer;transition:all .2s;
+}
+.pp:first-child{border-radius:8px 0 0 8px;}
+.pp:last-child{border-radius:0 8px 8px 0;}
+.pp:not(:first-child){border-left:none;}
+.pp:hover{background:var(--card2);z-index:1;}
+.pp.active{background:var(--blue-dim);border-color:var(--border-blue);z-index:2;}
+.pp-n{font-family:var(--mono);font-size:8px;color:var(--muted2);margin-bottom:7px;}
+.pp-i{font-size:16px;margin-bottom:5px;}
+.pp-t{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--white);margin-bottom:3px;}
+.pp-d{font-size:10px;color:var(--muted);line-height:1.4;}
+
+/* PROG */
+.prog{margin-bottom:10px;}
+.prog-h{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px;}
+.prog-l{color:var(--muted);}
+.prog-v{font-family:var(--mono);font-size:10px;font-weight:600;}
+.prog-bg{height:5px;background:var(--surface);border-radius:3px;overflow:hidden;}
+.prog-bar{height:100%;border-radius:3px;transition:width 1.4s cubic-bezier(.34,1.1,.64,1);}
+.pb{background:linear-gradient(90deg,#0284c7,var(--blue));}
+.pg{background:linear-gradient(90deg,#059669,var(--green));}
+.pa{background:linear-gradient(90deg,#d97706,var(--amber));}
+.pp2{background:linear-gradient(90deg,#7c3aed,var(--purple));}
+
+/* LOG */
+.log{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:2;max-height:180px;overflow-y:auto;margin-bottom:14px;}
+.lb{color:var(--blue);}.lg{color:var(--green);}.la{color:var(--amber);}.lr{color:var(--red);}.lm{color:var(--muted2);}
+
+/* BADGE */
+.badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 8px;border-radius:3px;border:1px solid;}
+.b-blue{color:var(--blue);border-color:rgba(56,189,248,.2);background:var(--blue-faint);}
+.b-green{color:var(--green);border-color:rgba(52,211,153,.2);background:var(--green-dim);}
+.b-amber{color:var(--amber);border-color:rgba(251,191,36,.2);background:var(--amber-dim);}
+.b-red{color:var(--red);border-color:rgba(248,113,113,.2);background:rgba(248,113,113,.06);}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:22px;right:22px;
+  background:var(--surface);border:1px solid var(--border-blue);
+  border-radius:9px;padding:13px 17px;
+  display:flex;align-items:center;gap:11px;
+  z-index:999;transform:translateY(80px);opacity:0;
+  transition:all .35s cubic-bezier(.34,1.4,.64,1);
+  box-shadow:0 16px 40px rgba(0,0,0,.5);max-width:300px;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+.ti{font-size:17px;}
+.tt{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--blue);margin-bottom:2px;}
+.tb2{font-size:11px;color:var(--muted);}
+
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{position:static;height:auto;display:flex;flex-wrap:wrap;gap:4px;padding:10px 12px;}
+  .sb-group,.sb-div{display:none;}
+  .g3,.g2{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-logo"><div class="tb-dot"></div>RN · ARCHITECTURE DEMO <span class="tb-badge">PRODUCTION STACK</span></div>
+  <div class="tb-pills">
+    <span class="tb-pill tp-blue">React Native + Expo</span>
+    <span class="tb-pill tp-green">NestJS APIs</span>
+    <span class="tb-pill tp-amber">EAS Build</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sb-group">OVERVIEW</div>
+    <div class="sb-item active" onclick="sp('overview',this)"><span class="sb-icon">⬡</span>System Overview</div>
+    <div class="sb-item" onclick="sp('structure',this)"><span class="sb-icon">📁</span>App Structure</div>
+    <div class="sb-div"></div>
+    <div class="sb-group">CORE FLOWS</div>
+    <div class="sb-item" onclick="sp('auth',this)"><span class="sb-icon">🔐</span>Auth Flow</div>
+    <div class="sb-item" onclick="sp('api',this)"><span class="sb-icon">⇄</span>API Integration</div>
+    <div class="sb-item" onclick="sp('push',this)"><span class="sb-icon">🔔</span>Push Notifications</div>
+    <div class="sb-div"></div>
+    <div class="sb-group">DEPLOYMENT</div>
+    <div class="sb-item" onclick="sp('eas',this)"><span class="sb-icon">▲</span>EAS Build Pipeline</div>
+    <div class="sb-item" onclick="sp('cicd',this)"><span class="sb-icon">♻</span>Mobile CI/CD</div>
+    <div class="sb-item" onclick="sp('release',this)"><span class="sb-icon">🚀</span>Release Management</div>
+    <div class="sb-div"></div>
+    <div class="sb-group">QUALITY</div>
+    <div class="sb-item" onclick="sp('perf',this)"><span class="sb-icon">⚡</span>Performance</div>
+  </div>
+
+  <div class="main">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="p-overview">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>system-overview</span></div>
+        <div class="ph-title">Production Mobile Stack</div>
+        <div class="ph-sub">React Native + Expo application backed by NestJS APIs. Full ownership of app architecture, build pipeline, and store release lifecycle for both iOS and Android.</div>
+      </div>
+      <div class="g3">
+        <div class="card"><div class="c-icon">⚛</div><div class="c-title">React Native + Expo</div><div class="c-body">Expo SDK managed workflow with EAS Build for iOS/Android. Single codebase, platform-specific optimizations where needed.</div></div>
+        <div class="card"><div class="c-icon">🏗️</div><div class="c-title">NestJS Backend APIs</div><div class="c-body">RESTful API layer built with NestJS. JWT auth, guards, interceptors, and modular service architecture.</div></div>
+        <div class="card"><div class="c-icon">📦</div><div class="c-title">EAS Build System</div><div class="c-body">Expo Application Services for cloud builds, OTA updates, TestFlight, and Play Store internal track releases.</div></div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="c-title" style="margin-bottom:12px">Stack Coverage</div>
+          <div class="prog"><div class="prog-h"><span class="prog-l">React Native / Expo</span><span class="prog-v" style="color:var(--blue)">Expert</span></div><div class="prog-bg"><div class="prog-bar pb" style="width:0%" data-t="94%"></div></div></div>
+          <div class="prog"><div class="prog-h"><span class="prog-l">iOS + Android builds</span><span class="prog-v" style="color:var(--green)">Expert</span></div><div class="prog-bg"><div class="prog-bar pg" style="width:0%" data-t="91%"></div></div></div>
+          <div class="prog"><div class="prog-h"><span class="prog-l">NestJS API integration</span><span class="prog-v" style="color:var(--blue)">Strong</span></div><div class="prog-bg"><div class="prog-bar pb" style="width:0%" data-t="88%"></div></div></div>
+          <div class="prog"><div class="prog-h"><span class="prog-l">EAS Build / OTA</span><span class="prog-v" style="color:var(--green)">Expert</span></div><div class="prog-bg"><div class="prog-bar pg" style="width:0%" data-t="92%"></div></div></div>
+          <div class="prog"><div class="prog-h"><span class="prog-l">Store release mgmt</span><span class="prog-v" style="color:var(--amber)">Strong</span></div><div class="prog-bg"><div class="prog-bar pa" style="width:0%" data-t="85%"></div></div></div>
+          <div class="prog"><div class="prog-h"><span class="prog-l">Push notifications</span><span class="prog-v" style="color:var(--blue)">Strong</span></div><div class="prog-bg"><div class="prog-bar pp2" style="width:0%" data-t="83%"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="c-title" style="margin-bottom:12px">Platform Support</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-family:var(--mono);font-size:11px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">iOS target</span><span style="color:var(--blue)">iOS 15+ (TestFlight → AppStore)</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Android target</span><span style="color:var(--green)">API 31+ (Play Internal → Prod)</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Expo SDK</span><span style="color:var(--blue)">SDK 51 / managed workflow</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">OTA updates</span><span style="color:var(--green)">expo-updates (no store wait)</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Auth</span><span style="color:var(--amber)">JWT + SecureStore</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Push</span><span style="color:var(--blue)">Expo + FCM + APNs</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">State</span><span style="color:var(--blue)">Zustand + React Query</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Navigation</span><span style="color:var(--green)">Expo Router v3</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRUCTURE -->
+    <div class="panel" id="p-structure">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>app-structure</span></div>
+        <div class="ph-title">Mobile App Architecture</div>
+        <div class="ph-sub">Modular folder structure separating screens, components, services, hooks, and API layer. Scales as the product grows without architectural debt.</div>
+      </div>
+      <div class="g2">
+        <div class="tree">
+          <div class="tr">📱 mobile-app/</div>
+          <div class="tf">📁 src/</div>
+          <div class="tf" style="padding-left:32px">📁 screens/</div>
+          <div class="tfi" style="padding-left:48px">HomeScreen.tsx</div>
+          <div class="tfi" style="padding-left:48px">LoginScreen.tsx</div>
+          <div class="tfi" style="padding-left:48px">ProfileScreen.tsx</div>
+          <div class="tf" style="padding-left:32px">📁 components/</div>
+          <div class="tfi" style="padding-left:48px">Button.tsx</div>
+          <div class="tfi" style="padding-left:48px">Card.tsx</div>
+          <div class="tfi" style="padding-left:48px">FormInput.tsx</div>
+          <div class="tf" style="padding-left:32px">📁 navigation/</div>
+          <div class="tfi" style="padding-left:48px">AppNavigator.tsx</div>
+          <div class="tfi" style="padding-left:48px">AuthNavigator.tsx</div>
+          <div class="tfi" style="padding-left:48px">TabNavigator.tsx</div>
+        </div>
+        <div class="tree">
+          <div class="tr">📱 src/ (continued)</div>
+          <div class="tf">📁 services/</div>
+          <div class="tfi" style="padding-left:32px">apiClient.ts</div>
+          <div class="tfi" style="padding-left:32px">authService.ts</div>
+          <div class="tfi" style="padding-left:32px">pushService.ts</div>
+          <div class="tf">📁 hooks/</div>
+          <div class="tfi" style="padding-left:32px">useAuth.ts</div>
+          <div class="tfi" style="padding-left:32px">useNotifications.ts</div>
+          <div class="tfi" style="padding-left:32px">useCachedQuery.ts</div>
+          <div class="tf">📁 store/</div>
+          <div class="tfi" style="padding-left:32px">authStore.ts</div>
+          <div class="tfi" style="padding-left:32px">userStore.ts</div>
+          <div class="tf">📁 api/</div>
+          <div class="tfi" style="padding-left:32px">endpoints.ts</div>
+          <div class="tfi" style="padding-left:32px">interceptors.ts</div>
+        </div>
+      </div>
+      <div class="code">
+        <div class="code-bar"><div class="cd cr"></div><div class="cd cy"></div><div class="cd cg"></div><div class="cf">services/apiClient.ts</div></div>
+        <div class="code-body">
+<span class="kw">import</span> axios <span class="kw">from</span> <span class="str">'axios'</span>;<br>
+<span class="kw">import</span> * <span class="kw">as</span> <span class="ty">SecureStore</span> <span class="kw">from</span> <span class="str">'expo-secure-store'</span>;<br><br>
+<span class="kw">export const</span> apiClient = axios.<span class="fn">create</span>({<br>
+&nbsp;&nbsp;baseURL: process.env.<span class="ty">EXPO_PUBLIC_API_URL</span>,<br>
+&nbsp;&nbsp;timeout: <span class="op">10000</span>,<br>
+});<br><br>
+<span class="cm">// Attach JWT from SecureStore on every request</span><br>
+apiClient.interceptors.request.<span class="fn">use</span>(<span class="kw">async</span> (config) => {<br>
+&nbsp;&nbsp;<span class="kw">const</span> token = <span class="kw">await</span> <span class="ty">SecureStore</span>.<span class="fn">getItemAsync</span>(<span class="str">'jwt_token'</span>);<br>
+&nbsp;&nbsp;<span class="kw">if</span> (token) config.headers.Authorization = <span class="str">`Bearer ${token}`</span>;<br>
+&nbsp;&nbsp;<span class="kw">return</span> config;<br>
+});
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTH -->
+    <div class="panel" id="p-auth">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>auth-flow</span></div>
+        <div class="ph-title">Authentication Flow</div>
+        <div class="ph-sub">JWT-based auth with NestJS backend. Tokens stored in expo-secure-store (encrypted native keychain). Refresh handled transparently via Axios interceptor.</div>
+      </div>
+      <div class="flow">
+        <div class="fn-node hl"><div class="fn-name">LoginScreen</div><div class="fn-sub">email + password input</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node"><div class="fn-name">authService.login()</div><div class="fn-sub">POST /auth/login → NestJS</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node gl"><div class="fn-name">NestJS Auth Guard</div><div class="fn-sub">validates credentials, issues JWT + refresh token</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node"><div class="fn-name">SecureStore.setItemAsync()</div><div class="fn-sub">JWT stored in encrypted native keychain</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node"><div class="fn-name">authStore.setUser()</div><div class="fn-sub">Zustand state updated, auth gate opens</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node hl"><div class="fn-name">Authenticated App</div><div class="fn-sub">all API calls include Authorization: Bearer token</div></div>
+      </div>
+    </div>
+
+    <!-- API -->
+    <div class="panel" id="p-api">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>api-integration</span></div>
+        <div class="ph-title">NestJS API Integration</div>
+        <div class="ph-sub">Axios client layer with interceptors for JWT attachment, token refresh, and retry logic. React Query handles caching, background refetch, and loading states.</div>
+      </div>
+      <div class="g2">
+        <div class="code">
+          <div class="code-bar"><div class="cd cr"></div><div class="cd cy"></div><div class="cd cg"></div><div class="cf">api/interceptors.ts — retry + refresh</div></div>
+          <div class="code-body">
+<span class="cm">// Auto-refresh on 401, retry once</span><br>
+apiClient.interceptors.response.<span class="fn">use</span>(<br>
+&nbsp;&nbsp;(res) => res,<br>
+&nbsp;&nbsp;<span class="kw">async</span> (error) => {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> (error.response?.status === <span class="op">401</span>) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">const</span> newToken = <span class="kw">await</span> <span class="fn">refreshToken</span>();<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> (newToken) <span class="kw">return</span> apiClient(error.config);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="fn">logout</span>(); <span class="cm">// hard logout if refresh fails</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return</span> Promise.<span class="fn">reject</span>(error);<br>
+&nbsp;&nbsp;}<br>
+);
+          </div>
+        </div>
+        <div class="code">
+          <div class="code-bar"><div class="cd cr"></div><div class="cd cy"></div><div class="cd cg"></div><div class="cf">hooks/useCachedQuery.ts</div></div>
+          <div class="code-body">
+<span class="cm">// React Query wrapper for NestJS endpoints</span><br>
+<span class="kw">export function</span> <span class="fn">useUserProfile</span>(userId: <span class="ty">string</span>) {<br>
+&nbsp;&nbsp;<span class="kw">return</span> <span class="fn">useQuery</span>({<br>
+&nbsp;&nbsp;&nbsp;&nbsp;queryKey: [<span class="str">'user'</span>, userId],<br>
+&nbsp;&nbsp;&nbsp;&nbsp;queryFn: () => apiClient.<span class="fn">get</span>(<span class="str">`/users/${userId}`</span>),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;staleTime: <span class="op">5</span> * <span class="op">60</span> * <span class="op">1000</span>, <span class="cm">// 5 min cache</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;retry: <span class="op">2</span>,<br>
+&nbsp;&nbsp;});<br>
+}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PUSH -->
+    <div class="panel" id="p-push">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>push-notifications</span></div>
+        <div class="ph-title">Push Notification System</div>
+        <div class="ph-sub">Expo push tokens registered at login, stored in NestJS backend. Backend events trigger push delivery via Expo Push API, routed to APNs (iOS) or FCM (Android).</div>
+      </div>
+      <div class="flow">
+        <div class="fn-node"><div class="fn-name">App Launch</div><div class="fn-sub">request notification permissions</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node hl"><div class="fn-name">Expo.getExpoPushTokenAsync()</div><div class="fn-sub">unique device push token generated</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node"><div class="fn-name">POST /notifications/register</div><div class="fn-sub">token stored in NestJS user record</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node al"><div class="fn-name">Backend Event Triggers</div><div class="fn-sub">NestJS emits notification on relevant events</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node gl"><div class="fn-name">Expo Push API</div><div class="fn-sub">routes to APNs (iOS) or FCM (Android)</div></div>
+        <div class="fn-arrow">↓</div>
+        <div class="fn-node hl"><div class="fn-name">Device Notification</div><div class="fn-sub">useNotifications hook handles foreground display</div></div>
+      </div>
+    </div>
+
+    <!-- EAS BUILD -->
+    <div class="panel" id="p-eas">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>eas-build-pipeline</span></div>
+        <div class="ph-title">EAS Build Pipeline</div>
+        <div class="ph-sub">Expo Application Services handles cloud builds for iOS and Android. No local Xcode or Android Studio required for team members. Click through the stages below.</div>
+      </div>
+      <div class="pipeline" id="eas-pipeline">
+        <div class="pp active" id="ep0" onclick="setEAS(0)"><div class="pp-n">STAGE 01</div><div class="pp-i">🖊</div><div class="pp-t">eas.json config</div><div class="pp-d">build profiles: dev, preview, prod</div></div>
+        <div class="pp" id="ep1" onclick="setEAS(1)"><div class="pp-n">STAGE 02</div><div class="pp-i">☁</div><div class="pp-t">Cloud Build</div><div class="pp-d">EAS server builds .ipa / .aab</div></div>
+        <div class="pp" id="ep2" onclick="setEAS(2)"><div class="pp-n">STAGE 03</div><div class="pp-i">🧪</div><div class="pp-t">TestFlight</div><div class="pp-d">iOS internal testers via Apple</div></div>
+        <div class="pp" id="ep3" onclick="setEAS(3)"><div class="pp-n">STAGE 04</div><div class="pp-i">🤖</div><div class="pp-t">Play Internal</div><div class="pp-d">Android internal testing track</div></div>
+        <div class="pp" id="ep4" onclick="setEAS(4)"><div class="pp-n">STAGE 05</div><div class="pp-i">🚀</div><div class="pp-t">Production</div><div class="pp-d">App Store + Play Store release</div></div>
+      </div>
+      <div class="code">
+        <div class="code-bar"><div class="cd cr"></div><div class="cd cy"></div><div class="cd cg"></div><div class="cf">eas.json — build profiles</div></div>
+        <div class="code-body">
+{<br>
+&nbsp;&nbsp;<span class="str">"build"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">"development"</span>: { <span class="str">"developmentClient"</span>: <span class="kw">true</span>, <span class="str">"distribution"</span>: <span class="str">"internal"</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">"preview"</span>: { <span class="str">"distribution"</span>: <span class="str">"internal"</span>, <span class="str">"channel"</span>: <span class="str">"preview"</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">"production"</span>: { <span class="str">"channel"</span>: <span class="str">"production"</span>, <span class="str">"autoIncrement"</span>: <span class="kw">true</span> }<br>
+&nbsp;&nbsp;},<br>
+&nbsp;&nbsp;<span class="str">"submit"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">"production"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">"ios"</span>: { <span class="str">"appleId"</span>: <span class="str">"team@company.com"</span> },<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="str">"android"</span>: { <span class="str">"serviceAccountKeyPath"</span>: <span class="str">"./play-key.json"</span> }<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;}<br>
+}
+        </div>
+      </div>
+    </div>
+
+    <!-- CICD -->
+    <div class="panel" id="p-cicd">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>mobile-cicd</span></div>
+        <div class="ph-title">Mobile CI/CD Pipeline</div>
+        <div class="ph-sub">GitHub Actions triggers EAS builds on push to main. Preview builds auto-generated for PRs. Production releases gated behind manual approval.</div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="c-title" style="margin-bottom:12px">CI/CD Log — Simulated</div>
+        <div class="log" id="cicdLog"><span class="lm">[--:--] Awaiting trigger...</span></div>
+        <button onclick="runCICD()" style="background:var(--blue-dim);border:1px solid var(--border-blue);color:var(--blue);font-family:var(--mono);font-size:11px;padding:7px 16px;border-radius:4px;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(56,189,248,.14)'" onmouseout="this.style.background='var(--blue-dim)'">▶ Simulate Pipeline Run</button>
+      </div>
+      <div class="code">
+        <div class="code-bar"><div class="cd cr"></div><div class="cd cy"></div><div class="cd cg"></div><div class="cf">.github/workflows/mobile-build.yml</div></div>
+        <div class="code-body">
+<span class="kw">on</span>:<br>
+&nbsp;&nbsp;<span class="fn">push</span>: { <span class="ty">branches</span>: [<span class="str">'main'</span>] }<br>
+&nbsp;&nbsp;<span class="fn">pull_request</span>: { <span class="ty">branches</span>: [<span class="str">'main'</span>] }<br><br>
+<span class="kw">jobs</span>:<br>
+&nbsp;&nbsp;<span class="fn">build-preview</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ty">runs-on</span>: ubuntu-latest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="ty">steps</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="fn">uses</span>: actions/checkout@v4<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="fn">run</span>: <span class="str">npm ci</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="fn">run</span>: <span class="str">npx eas-cli build --profile preview --non-interactive</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ty">env</span>: { EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }} }
+        </div>
+      </div>
+    </div>
+
+    <!-- RELEASE -->
+    <div class="panel" id="p-release">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>release-management</span></div>
+        <div class="ph-title">Release Management</div>
+        <div class="ph-sub">Semantic versioning, OTA updates for JS-only changes (no store review), and store releases for native changes. Both platforms managed from a single workflow.</div>
+      </div>
+      <div class="g3">
+        <div class="card">
+          <div class="c-icon">🔢</div>
+          <div class="c-title">Expo Versioning</div>
+          <div class="c-body"><span style="font-family:var(--mono);color:var(--blue)">runtimeVersion</span> in app.json controls native binary version. <span style="font-family:var(--mono);color:var(--green)">autoIncrement</span> in eas.json handles buildNumber/versionCode automatically on each EAS build.</div>
+        </div>
+        <div class="card">
+          <div class="c-icon">⚡</div>
+          <div class="c-title">OTA Updates</div>
+          <div class="c-body">JS/asset-only changes ship via <span style="font-family:var(--mono);color:var(--green)">expo-updates</span> without waiting for App Store review. Users get updates silently in background. Critical hotfixes in minutes, not days.</div>
+        </div>
+        <div class="card">
+          <div class="c-icon">📦</div>
+          <div class="c-title">Store Releases</div>
+          <div class="c-body">Native changes require a full EAS build + store submission. <span style="font-family:var(--mono);color:var(--amber)">eas submit</span> handles TestFlight and Play Internal track upload automatically.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERF -->
+    <div class="panel" id="p-perf">
+      <div class="ph">
+        <div class="ph-crumb">mobile-architecture / <span>performance</span></div>
+        <div class="ph-title">Performance Optimization</div>
+        <div class="ph-sub">Production mobile apps must be fast on low-end Android and older iOS devices. These are the strategies applied across the codebase.</div>
+      </div>
+      <div class="g2">
+        <div class="card"><div class="c-icon">🦥</div><div class="c-title">Lazy Loading</div><div class="c-body">React Navigation lazy loads screens. Heavy components wrapped in <span style="font-family:var(--mono);color:var(--blue)">React.lazy()</span> with Suspense. Images loaded with <span style="font-family:var(--mono);color:var(--blue)">expo-image</span> (faster than Image).</div></div>
+        <div class="card"><div class="c-icon">♻</div><div class="c-title">Memoization</div><div class="c-body"><span style="font-family:var(--mono);color:var(--green)">React.memo</span> on list item components. <span style="font-family:var(--mono);color:var(--green)">useMemo</span> for expensive computations. <span style="font-family:var(--mono);color:var(--green)">useCallback</span> for stable event handlers passed to FlatList.</div></div>
+        <div class="card"><div class="c-icon">🗄️</div><div class="c-title">API Caching</div><div class="c-body">React Query with <span style="font-family:var(--mono);color:var(--blue)">staleTime</span> prevents redundant requests. Optimistic updates for mutations. Offline-first queries persist to AsyncStorage.</div></div>
+        <div class="card"><div class="c-icon">🔄</div><div class="c-title">Background Tasks</div><div class="c-body"><span style="font-family:var(--mono);color:var(--amber)">expo-background-fetch</span> for data sync. Heavy processing moved off the JS thread with <span style="font-family:var(--mono);color:var(--amber)">react-native-reanimated</span> for animations.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <div class="ti" id="tI">✅</div>
+  <div><div class="tt" id="tT">—</div><div class="tb2" id="tB">—</div></div>
+</div>
+
+<script>
+function sp(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('p-'+id).classList.add('active');
+  if(el)el.classList.add('active');
+  animBars();
+}
+function animBars(){
+  setTimeout(()=>{
+    document.querySelectorAll('.prog-bar[data-t]').forEach(b=>b.style.width=b.dataset.t);
+  },100);
+}
+animBars();
+
+function setEAS(i){
+  for(let j=0;j<5;j++) document.getElementById('ep'+j)?.classList.toggle('active',j===i);
+}
+
+const CICD_LOG=[
+  {d:0,c:'lm',t:'[00:00:01] Push to main detected — triggering pipeline'},
+  {d:400,c:'lb',t:'[00:00:03] ✓ Checkout complete'},
+  {d:800,c:'lb',t:'[00:00:06] ✓ npm ci — dependencies installed'},
+  {d:1200,c:'lb',t:'[00:00:09] ✓ TypeScript check passed (0 errors)'},
+  {d:1600,c:'lb',t:'[00:00:12] ✓ ESLint — no violations'},
+  {d:2000,c:'lb',t:'[00:00:15] Starting EAS preview build...'},
+  {d:2600,c:'lb',t:'[00:00:28] ✓ Android .aab build complete'},
+  {d:3200,c:'lb',t:'[00:00:41] ✓ iOS .ipa build complete'},
+  {d:3800,c:'lg',t:'[00:00:45] ✓ Preview build URLs posted to PR'},
+  {d:4400,c:'la',t:'[00:00:48] Awaiting QA sign-off for production...'},
+  {d:5000,c:'lg',t:'[00:01:02] ✓ QA approved — submitting to stores'},
+  {d:5600,c:'lg',t:'[00:01:08] ✓ iOS submitted to TestFlight'},
+  {d:6000,c:'lg',t:'[00:01:12] ✓ Android submitted to Play Internal Track'},
+  {d:6600,c:'lg',t:'[00:01:20] ✅ PIPELINE COMPLETE — both platforms live'},
+];
+function runCICD(){
+  const log=document.getElementById('cicdLog');
+  log.innerHTML='';
+  CICD_LOG.forEach(({d,c,t})=>{
+    setTimeout(()=>{
+      const line=document.createElement('div');
+      line.className=c; line.textContent=t;
+      log.appendChild(line); log.scrollTop=log.scrollHeight;
+      if(t.includes('PIPELINE COMPLETE')) toast2('✅','PIPELINE COMPLETE','iOS + Android submitted to stores');
+    },d);
+  });
+}
+function toast2(i,t,b){
+  document.getElementById('tI').textContent=i;
+  document.getElementById('tT').textContent=t;
+  document.getElementById('tB').textContent=b;
+  const el=document.getElementById('toast');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),4000);
+}
+</script>
+</body>
+</html>

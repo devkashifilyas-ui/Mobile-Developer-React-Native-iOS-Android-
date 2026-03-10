@@ -194,10 +194,3 @@ To run locally:
 rn-mobile-architecture-demo.html
 
 The dashboard will open in your browser.
-
----
-
-# Author
-
-Kashif Ilyas
-Senior Mobile & Full Stack Engineer
